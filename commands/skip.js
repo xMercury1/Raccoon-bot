@@ -6,24 +6,28 @@ module.exports = {
         .setDescription("Salta la canción actual."),
 
     async execute(interaction, client) {
-        const player = client.lavalink.manager.players.get(interaction.guild.id);
+        await interaction.deferReply();
 
-        if (!player) {
-            return interaction.reply({ content: "❌ No hay ninguna canción reproduciéndose.", ephemeral: true });
+        const guildId = interaction.guild.id;
+        const musicChannel = global.musicChannels ? global.musicChannels[guildId] : null;
+
+        if (musicChannel && interaction.channel.id !== musicChannel) {
+            return interaction.editReply({ content: `❌ Usa los comandos de música en <#${musicChannel}>.`, ephemeral: true });
         }
 
-        if (!player.queue.current) {
-            return interaction.reply({ content: "❌ No hay ninguna canción para saltar.", ephemeral: true });
+        const player = client.lavalink.manager.players.get(guildId);
+        if (!player || !player.queue.current) {
+            return interaction.editReply({ content: "❌ No hay ninguna canción para saltar.", ephemeral: true });
         }
 
         const { title } = player.queue.current;
-        player.stop(); // ⏭️ Salta la canción actual
+        player.stop(); // Salta la canción actual
 
         if (player.queue.size === 0) {
-            await interaction.reply(`⏭️ **${title}** saltada. No hay más canciones en la cola. Me desconecto.`);
-            player.destroy(); // 🔹 Desconectar si no hay más canciones
+            await interaction.editReply(`⏭️ **${title}** saltada. No hay más canciones en la cola.`);
+            player.destroy(); // Desconectar si no hay más canciones
         } else {
-            await interaction.reply(`⏭️ **${title}** saltada. Reproduciendo la siguiente canción...`);
+            await interaction.editReply(`⏭️ **${title}** saltada. Reproduciendo la siguiente canción...`);
         }
     }
 };

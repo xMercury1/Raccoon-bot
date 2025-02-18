@@ -1,28 +1,31 @@
-const { SlashCommandBuilder } = require("discord.js");
+const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName("queue")
-        .setDescription("Muestra la cola de canciones en reproducción."),
+        .setDescription("Muestra la cola de canciones."),
 
     async execute(interaction, client) {
-        const player = client.lavalink.manager.players.get(interaction.guild.id);
+        await interaction.deferReply();
 
-        if (!player || !player.queue.current) {
-            return interaction.reply({ content: "❌ No hay ninguna canción en la cola.", ephemeral: true });
+        const guildId = interaction.guild.id;
+        const musicChannel = global.musicChannels ? global.musicChannels[guildId] : null;
+
+        if (musicChannel && interaction.channel.id !== musicChannel) {
+            return interaction.editReply({ content: `❌ Usa los comandos de música en <#${musicChannel}>.`, ephemeral: true });
         }
 
-        const queue = player.queue;
-        const nowPlaying = `🎵 **Reproduciendo ahora:** ${queue.current.title}`;
-
-        if (queue.size === 0) {
-            return interaction.reply(nowPlaying);
+        const player = client.lavalink.manager.players.get(guildId);
+        if (!player || !player.queue.length) {
+            return interaction.editReply({ content: "❌ La cola está vacía.", ephemeral: true });
         }
 
-        const queueList = queue.slice(0, 10) // 🔹 Muestra hasta 10 canciones
-            .map((track, index) => `\`${index + 1}.\` ${track.title}`)
-            .join("\n");
+        const queue = player.queue.map((track, index) => `**${index + 1}.** ${track.title}`).join("\n");
+        const embed = new EmbedBuilder()
+            .setTitle("🎶 Cola de Reproducción")
+            .setDescription(queue)
+            .setColor("Blue");
 
-        await interaction.reply(`${nowPlaying}\n\n📜 **Cola de reproducción:**\n${queueList}`);
+        interaction.editReply({ embeds: [embed] });
     }
 };

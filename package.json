@@ -13,6 +13,7 @@
     "@discordjs/voice": "^0.18.0",
     "discord.js": "^14.18.0",
     "dotenv": "^16.4.7",
-    "erela.js": "github:Tomato6966/erela.js"
+    "erela.js": "github:Tomato6966/erela.js",
+    "pg": "^8.13.3"
   }
 }
