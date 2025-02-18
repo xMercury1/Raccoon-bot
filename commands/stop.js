@@ -6,13 +6,21 @@ module.exports = {
         .setDescription("Detiene la música y desconecta el bot."),
 
     async execute(interaction, client) {
-        const player = client.lavalink.manager.players.get(interaction.guild.id);
+        await interaction.deferReply();
 
-        if (!player) {
-            return interaction.reply({ content: "❌ No hay ninguna canción reproduciéndose.", ephemeral: true });
+        const guildId = interaction.guild.id;
+        const musicChannel = global.musicChannels ? global.musicChannels[guildId] : null;
+
+        if (musicChannel && interaction.channel.id !== musicChannel) {
+            return interaction.editReply({ content: `❌ Usa los comandos de música en <#${musicChannel}>.`, ephemeral: true });
         }
 
-        player.destroy(); // 🔹 Detiene la música y desconecta el bot
-        await interaction.reply("🛑 Se ha detenido la reproducción y el bot se ha desconectado.");
+        const player = client.lavalink.manager.players.get(guildId);
+        if (!player) {
+            return interaction.editReply({ content: "❌ No hay música reproduciéndose.", ephemeral: true });
+        }
+
+        player.destroy(); // Detiene la música y desconecta
+        interaction.editReply("🛑 Música detenida y bot desconectado.");
     }
 };
