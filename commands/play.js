@@ -1,13 +1,13 @@
-const ownerId = "301144625366827021"; // Reemplaza con tu ID de Discord
-const { SlashCommandBuilder } = require("discord.js");
+const ownerId = "301144625366827021";
+const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName("play")
-        .setDescription("Reproduce música en el canal de voz")
+        .setDescription("🎵 Reproduce música en el canal de voz")
         .addStringOption(option =>
             option.setName("query")
-                .setDescription("El nombre o enlace de la canción")
+                .setDescription("🎶 Nombre o enlace de la canción")
                 .setRequired(true)
         ),
 
@@ -15,7 +15,7 @@ module.exports = {
         await interaction.deferReply();
 
         const guildId = interaction.guild.id;
-        const guildName = interaction.guild.name; // Obtener el nombre del servidor
+        const guildName = interaction.guild.name;
         const musicChannel = global.musicChannels ? global.musicChannels[guildId] : null;
 
         if (musicChannel && interaction.channel.id !== musicChannel) {
@@ -26,7 +26,7 @@ module.exports = {
         const voiceChannel = interaction.member.voice.channel;
 
         if (!voiceChannel) {
-            return interaction.editReply({ content: "❌ Debes estar en un canal de voz.", ephemeral: true });
+            return interaction.editReply({ content: "❌ Debes estar en un canal de voz para reproducir música.", ephemeral: true });
         }
 
         let player = client.lavalink.manager.players.get(guildId);
@@ -40,46 +40,54 @@ module.exports = {
         }
 
         try {
-            if (player.state !== "CONNECTED") {
+            if (!["CONNECTED", "CONNECTING"].includes(player.state)) {
                 await player.connect();
             }
         } catch (error) {
             console.error("❌ Error al conectar con Lavalink:", error);
 
-            // 📩 **Enviar mensaje al administrador**
+            // 📩 Notificar al admin
             try {
                 const owner = await client.users.fetch(ownerId);
                 if (owner) {
-                    const errorMessage = `⚠️ **Error con Lavalink**  \n📅 Fecha y hora: <t:${Math.floor(Date.now() / 1000)}>  \n🏠 **Servidor:** ${guildName}  \n🆔 **ID del servidor:** ${guildId}  \n💀 **Código de error:** \`${error.message}\``;
-
+                    const errorMessage = `⚠️ **Error con Lavalink**\n📅 Fecha: <t:${Math.floor(Date.now() / 1000)}:F>\n🏠 Servidor: **${guildName}**\n🆔 ID: \`${guildId}\`\n💥 Código: \`${error.message}\``;
                     await owner.send(errorMessage);
-                    console.log(`✅ Mensaje de error enviado a ${owner.tag}`);
-                } else {
-                    console.error("❌ No se encontró el usuario del administrador.");
+                    console.log(`✅ Error reportado a ${owner.tag}`);
                 }
             } catch (err) {
-                console.error("❌ No pude enviar mensaje al admin:", err);
+                console.error("❌ No se pudo notificar al administrador:", err);
             }
 
             return interaction.editReply({
-                content: "⚠️ **El servidor de música está temporalmente inactivo.(Se esta enviando un mensaje al administrador) Si no recibes pronta respuesta **\nPor favor, contacta a **@xMercury1** o espera un momento.",
+                content: "⚠️ El servidor de música está temporalmente inactivo. Se notificó al administrador. Si el problema persiste, contacta a **@xMercury1**.",
                 ephemeral: true
             });
         }
 
         const searchResult = await client.lavalink.manager.search(query, interaction.user);
-        if (!searchResult.tracks.length) {
-            return interaction.editReply({ content: "❌ No se encontraron resultados.", ephemeral: true });
+
+        if (
+            searchResult.loadType === "LOAD_FAILED" ||
+            !searchResult.tracks ||
+            searchResult.tracks.length === 0
+        ) {
+            return interaction.editReply({ content: "❌ No se encontraron resultados. Intenta con otro nombre o enlace.", ephemeral: true });
         }
 
         const track = searchResult.tracks[0];
         player.queue.add(track);
 
-        if (!player.playing && !player.paused) {
+        const embed = new EmbedBuilder()
+            .setTitle(player.playing ? "🎵 Añadido a la cola" : "🎶 Reproduciendo ahora")
+            .setDescription(`**[${track.title}](${track.uri})**`)
+            .setThumbnail(track.thumbnail || null)
+            .setFooter({ text: `Solicitado por ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
+            .setColor("Random");
+
+        if (!player.playing && !player.paused && !player.queue.current) {
             player.play();
-            interaction.editReply(`🎶 Reproduciendo ahora: **${track.title}**`);
-        } else {
-            interaction.editReply(`🎵 Añadido a la cola: **${track.title}**`);
         }
+
+        return interaction.editReply({ embeds: [embed] });
     }
 };

@@ -84,12 +84,7 @@ client.lavalink.manager.on("queueEnd", async (player) => {
 
     channel.send("⏳ No hay más canciones en la cola.");
 
-    setTimeout(() => {
-        if (!player.queue.length) { // Si la cola sigue vacía
-            channel.send("👋 Me desconecté por inactividad.");
-            player.destroy();
-        }
-    }, 180000); // 3 minutos de espera
+
 });
 
 // 🔹 Manejar mensajes en el canal de música
