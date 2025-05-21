@@ -1,5 +1,5 @@
 const ownerId = "301144625366827021";
-const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
+const { SlashCommandBuilder } = require("discord.js");
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -37,16 +37,20 @@ module.exports = {
                 textChannel: interaction.channel.id,
                 selfDeafen: true
             });
+            console.log(`🎧 Player creado para guild ${guildName} (${guildId}) en canal de voz ${voiceChannel.id}`);
         }
+
+        console.log(`Estado del player antes de conectar: ${player.state}`);
 
         try {
             if (!["CONNECTED", "CONNECTING"].includes(player.state)) {
                 await player.connect();
+                console.log(`✅ Player conectado en guild ${guildName} (${guildId})`);
             }
         } catch (error) {
             console.error("❌ Error al conectar con Lavalink:", error);
 
-            // 📩 Notificar al admin
+            // Notificar admin
             try {
                 const owner = await client.users.fetch(ownerId);
                 if (owner) {
@@ -76,18 +80,19 @@ module.exports = {
 
         const track = searchResult.tracks[0];
         player.queue.add(track);
+        console.log(`🎶 Track añadido a la cola: ${track.title}`);
 
-        const embed = new EmbedBuilder()
-            .setTitle(player.playing ? "🎵 Añadido a la cola" : "🎶 Reproduciendo ahora")
-            .setDescription(`**[${track.title}](${track.uri})**`)
-            .setThumbnail(track.thumbnail || null)
-            .setFooter({ text: `Solicitado por ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
-            .setColor("Random");
-
-        if (!player.playing && !player.paused && !player.queue.current) {
-            player.play();
+        if (!player.playing && !player.paused) {
+            try {
+                await player.play();
+                console.log(`▶️ Reproduciendo ahora: ${track.title}`);
+                await interaction.editReply({ content: `🎶 Reproduciendo ahora: **${track.title}**` });
+            } catch (error) {
+                console.error("❌ Error al reproducir la canción:", error);
+                return interaction.editReply({ content: "❌ No pude reproducir la canción, intenta más tarde.", ephemeral: true });
+            }
+        } else {
+            await interaction.editReply({ content: `🎵 Añadido a la cola: **${track.title}**` });
         }
-
-        return interaction.editReply({ embeds: [embed] });
     }
 };
